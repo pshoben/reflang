@@ -30,7 +30,7 @@ namespace
 
 		for (const auto& field : c.Fields)
 		{
-			tmpl << "	t(\"" + field.Name + "\", c." << field.Name << ");\n";
+			tmpl << "	t(\"" + field.Name + " - " + field.Type + ":\", c." << field.Name << ");\n";
 		}
 
 		return tmpl.str();
