@@ -154,7 +154,7 @@ namespace reflang
 			void Register(std::unique_ptr<IClass>&& f);
 			void Register(std::unique_ptr<IEnum>&& e);
 		}
-	};
+	}
 
 	class Exception : virtual public std::exception
 	{

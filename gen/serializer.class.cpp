@@ -3,9 +3,11 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <set>
 
 #include "serializer.function.hpp"
 #include "serializer.util.hpp"
+#include "tests/catch.hpp"
 
 using namespace std;
 using namespace reflang;
@@ -23,6 +25,88 @@ namespace
 
 		return tmpl.str();
 	}
+
+	vector<string> split( string str, char delim ) 
+	{
+		std::istringstream ss( str );
+		vector<string> out;
+		string token;
+		while( std::getline( ss,token,delim )) {
+			out.push_back( token ) ;
+		}
+		return out;
+	}
+
+	bool IsFundamentalType(string base)
+	{
+		static set<string> fundamentals = { "int", "long", "char", "double", "float" } ;
+		auto it = fundamentals.find(base);
+		return it != fundamentals.end();
+	}
+
+	string GetBaseType(string type) 
+	{
+		// TODO cv-qualifiers etc
+		vector<string> arr = split( type, ' ' );
+		return arr[0];	
+	}
+	bool IsArrayType(string type) 
+	{
+		vector<string> arr = split( type, ' ' );
+		for( string s : arr ) {
+			if( s.rfind( "[",0 )==0 )
+				return true;
+		}
+		return false;
+	}
+	bool GetArrayRank(string type) 
+	{
+		return 1 ; // TODO
+	}
+	int GetArraySize(string type) 
+	{
+		vector<string> arr = split( type, ' ' );
+		for( string s : arr ) {
+			if( s.rfind( "[",0 )==0 ) {
+				string trimmed = s.substr( 1,s.size()-2 ); // remove the surrounding [ ] 
+				return std::stoi(trimmed);
+			}
+		}
+		// TODO not found
+		return 0;
+	}
+
+	string IterateFieldsAndValues(const Class& c)
+	{
+		stringstream tmpl;
+
+		
+		for (const auto& field : c.Fields)
+		{
+			string base = GetBaseType(field.Type);
+			if( IsFundamentalType( base )) {
+				if( IsArrayType( field.Type ) && strcmp( base.c_str(), "char" )) { // not a char array
+					int arraySize = GetArraySize( field.Type );
+					tmpl << " printf(\"got array type %s [%d]\",\"" << base << "\"," << arraySize << ");\n";
+					for( int i = 0 ; i < arraySize ; ++i ) {
+						tmpl << "	t(\"" + field.Name << "[" << i << "] - " << field.Type << ":\", c." << field.Name << "[" << i << "]);\n";
+					}
+				} else {
+					tmpl << " printf(\"got base type %s \",\"" << base << "\");\n";
+					tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", c." << field.Name << ");\n";
+				}
+			} else {
+				tmpl << " printf(\"got subclass type %s \",\"" << base << "\");\n";
+				tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", \"subtype\");\n";
+				//void * f = (void *) ::reflang::registry::GetByName(base);
+				///* Class* subclass = */ GetClassByName(base);
+			 	//string sub = IterateFieldsAndValues(subclass);	
+				//tmpl << sub;
+			}
+		}
+		return tmpl.str();
+	}
+
 
 	string IterateStaticFields(const Class& c)
 	{
@@ -334,6 +418,12 @@ public:
 	static void IterateFields(%name%& c, T t);
 
 	template <typename T>
+	static void IterateFieldsAndValues(const %name%& c, T t);
+
+	template <typename T>
+	static void IterateFieldsAndValues(%name%& c, T t);
+
+	template <typename T>
 	static void IterateStaticFields(T t);
 };
 
@@ -348,9 +438,22 @@ void Class<%name%>::IterateFields(%name%& c, T t)
 %iterate_fields%}
 
 template <typename T>
+void Class<%name%>::IterateFieldsAndValues(const %name%& c, T t)
+{
+%iterate_fields_and_values%}
+
+template <typename T>
+void Class<%name%>::IterateFieldsAndValues(%name%& c, T t)
+{
+%iterate_fields_and_values%}
+
+
+template <typename T>
 void Class<%name%>::IterateStaticFields(T t)
 {
 %iterate_static_fields%}
+
+
 
 %methods_decl%%static_methods_decl%
 )";
@@ -360,6 +463,7 @@ void Class<%name%>::IterateStaticFields(T t)
 			{
 				{"%name%", c.GetFullName()},
 				{"%iterate_fields%", IterateFields(c)},
+				{"%iterate_fields_and_values%", IterateFieldsAndValues(c)},
 				{"%iterate_static_fields%", IterateStaticFields(c)},
 				{"%field_count%", to_string(c.Fields.size())},
 				{"%static_field_count%", to_string(c.StaticFields.size())},

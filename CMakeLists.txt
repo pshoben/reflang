@@ -3,6 +3,7 @@ project (reflang)
 enable_testing()
 
 include_directories(${CMAKE_SOURCE_DIR})
+include_directories(lib)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -stdlib=libc++")
@@ -38,25 +39,25 @@ add_executable(
 	gen/serializer.function.cpp gen/serializer.function.hpp
 	gen/serializer.util.cpp gen/serializer.util.hpp
 	gen/types.cpp gen/types.hpp)
-target_link_libraries(reflang ${CLANG_LIBS})
+target_link_libraries(reflang ${CLANG_LIBS} libreflang)
 
-add_executable(
-	reflang_yaml
-	gen/reflang_yaml.main.cpp
-	gen/serializer_yaml.cpp gen/serializer_yaml.hpp
-	gen/serializer_yaml.class.cpp gen/serializer_yaml.class.hpp
-	gen/cmdargs.cpp gen/cmdargs.hpp
-	gen/parser.class.cpp gen/parser.class.hpp
-	gen/parser.cpp gen/parser.hpp
-	gen/parser.enum.cpp gen/parser.enum.hpp
-	gen/parser.function.cpp gen/parser.function.hpp
-	gen/parser.util.cpp gen/parser.util.hpp
-	gen/serializer.enum.cpp gen/serializer.enum.hpp
-	gen/serializer.function.cpp gen/serializer.function.hpp
-	gen/serializer.util.cpp gen/serializer.util.hpp
-	gen/types.cpp gen/types.hpp)
-
-target_link_libraries(reflang_yaml ${CLANG_LIBS})
+#add_executable(
+#	reflang_yaml
+#	gen/reflang_yaml.main.cpp
+#	gen/serializer_yaml.cpp gen/serializer_yaml.hpp
+#	gen/serializer_yaml.class.cpp gen/serializer_yaml.class.hpp
+#	gen/cmdargs.cpp gen/cmdargs.hpp
+#	gen/parser.class.cpp gen/parser.class.hpp
+#	gen/parser.cpp gen/parser.hpp
+#	gen/parser.enum.cpp gen/parser.enum.hpp
+#	gen/parser.function.cpp gen/parser.function.hpp
+#	gen/parser.util.cpp gen/parser.util.hpp
+#	gen/serializer.enum.cpp gen/serializer.enum.hpp
+#	gen/serializer.function.cpp gen/serializer.function.hpp
+#	gen/serializer.util.cpp gen/serializer.util.hpp
+#	gen/types.cpp gen/types.hpp)
+#
+#target_link_libraries(reflang_yaml ${CLANG_LIBS} libreflang)
 
 
 add_subdirectory(tests)
