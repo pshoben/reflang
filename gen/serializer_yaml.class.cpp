@@ -3,12 +3,17 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <string>
+#include <cstring>
 
 #include "serializer.function.hpp"
 #include "serializer.util.hpp"
 
 using namespace std;
 using namespace reflang;
+
+using std::string;
+using std::vector;
 
 namespace
 {
@@ -24,13 +29,67 @@ namespace
 		return tmpl.str();
 	}
 
+	vector<string> split( string str, char delim ) 
+	{
+		std::istringstream ss( str );
+		vector<string> out;
+		string token;
+		while( std::getline( ss,token,delim )) {
+			out.push_back( token ) ;
+		}
+		return out;
+	}
+
+	string GetBaseType(string type) 
+	{
+		// TODO cv-qualifiers etc
+		vector<string> arr = split( type, ' ' );
+		return arr[0];	
+	}
+	bool IsArrayType(string type) 
+	{
+		vector<string> arr = split( type, ' ' );
+		for( string s : arr ) {
+			if( s.rfind( "[",0 )==0 )
+				return true;
+		}
+		return false;
+	}
+	bool GetArrayRank(string type) 
+	{
+		return 1 ; // TODO
+	}
+	int GetArraySize(string type) 
+	{
+		vector<string> arr = split( type, ' ' );
+		for( string s : arr ) {
+			if( s.rfind( "[",0 )==0 ) {
+				string trimmed = s.substr( 1,s.size()-2 ); // remove the surrounding [ ] 
+				return std::stoi(trimmed);
+			}
+		}
+		// TODO not found
+		return 0;
+	}
+
 	string IterateFieldsAndValues(const Class& c)
 	{
 		stringstream tmpl;
 
+		
 		for (const auto& field : c.Fields)
 		{
-			tmpl << "	t(\"" + field.Name + " - " + field.Type + ":\", c." << field.Name << ");\n";
+			string base = GetBaseType(field.Type);
+			if( IsArrayType( field.Type ) && strcmp( base.c_str(), "char" )) { // not a char array
+				int arraySize = GetArraySize( field.Type );
+				tmpl << " printf(\"got array type %s [%d]\",\"" << base << "\"," << arraySize << ");\n";
+				for( int i = 0 ; i < arraySize ; ++i ) {
+					tmpl << "	t(\"" + field.Name << "[" << i << "] - " << field.Type << ":\", c." << field.Name << "[" << i << "]);\n";
+				}
+			} else {
+				tmpl << " printf(\"got base type %s \",\"" << base << "\");\n";
+				tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", c." << field.Name << ");\n";
+			}
 		}
 
 		return tmpl.str();
