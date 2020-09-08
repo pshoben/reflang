@@ -94,8 +94,10 @@ namespace
 	{
 		vector<string> arr = split( type, ' ' );
 		for( string s : arr ) {
-			if( s.rfind( "[",0 )==0 ) {
-				string trimmed = s.substr( 1,s.size()-2 ); // remove the surrounding [ ] 
+			size_t index = s.rfind( "[" ) ;
+			if( index != string::npos ) {
+				string trimmed = s.substr( index+1,s.size()-(index+2) ); // remove the surrounding [ ] 
+				//printf("trimming start %lu end %lu of %s to [%s]\n", index, s.size()-(index+2), s.c_str(), trimmed.c_str());
 				return std::stoi(trimmed);
 			}
 		}
@@ -116,21 +118,25 @@ namespace
 		return NULL;
 	}
 	
-	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types, string indent, string var_name)
+	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types, string indent, string var_name, bool is_pointer)
 	{
 		stringstream tmpl;
 		int field_count = 0;
+		string redirect_parent = (is_pointer) ? "->" : ".";
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
-			printf("got base [%s] arr=%d ptr=%d ref=%d from [%s]\n", base.c_str(), 
-				IsArrayType( field.Type ), 
+			printf("got base [%s] arr=%d arrsize=%d, ptr=%d ref=%d from [%s]\n", base.c_str(), 
+				IsArrayType( field.Type ),
+				GetArraySize( field.Type ),
 				IsPointerType( field.Type ), 
 				IsRefType( field.Type ), 
 				field.Type.c_str());
-			string redirect = "";
+			string redirect_field = "";
+			string subtype_redirect = ".";
 			if( IsPointerType( field.Type )) {
-				redirect = "*";
+				redirect_field = "*";
+				subtype_redirect = "->";
 			}
 			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) 
@@ -142,11 +148,11 @@ namespace
 					int arraySize = GetArraySize( field.Type );
 					for( int i = 0 ; i < arraySize ; ++i ) {
 						tmpl << "	t(\"" << indent << "  - " // << field.Type << " " 
-						"\", " << redirect << var_name << "." << field.Name << "[" << i << "]);\n";
+						"\", " << redirect_field << var_name << redirect_parent << field.Name << "[" << i << "]);\n";
 					}
 				} else {
 					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
-					<< field.Name << ": \", " << redirect << var_name << "." << field.Name << ");\n";
+					<< field.Name << ": \", " << redirect_field << var_name << redirect_parent << field.Name << ");\n";
 				}
 			} else {
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
@@ -156,12 +162,31 @@ namespace
 					if( IsArrayType( field.Type )) { 
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
-							tmpl << IterateFieldsAndValues( *subType, types, indent + "  - ", 
-							redirect + var_name + "." + field.Name + "[" + to_string(i) + "]" ) ;
+							string subfield_name = var_name + redirect_parent + field.Name + "[" + to_string(i) + "]";
+							if( IsPointerType( field.Type )) {
+								tmpl << " if( " <<  subfield_name  << ") {\n";
+							}
+							tmpl << IterateFieldsAndValues( *subType, types, indent + "  - ", subfield_name ,
+							IsPointerType( field.Type )) ;
+
+							if( IsPointerType( field.Type )) {
+								tmpl << " } else { t( " + subfield_name + ", \"null\");}\n";
+							}
+
 						}
 
 					} else {
-						tmpl << IterateFieldsAndValues( *subType, types, indent + "  ", redirect + var_name + "." + field.Name ) ;
+						string subfield_name = var_name + redirect_parent + field.Name;
+						if( IsPointerType( field.Type )) {
+							tmpl << " if( " <<  subfield_name  << ") {\n";
+						}
+						tmpl << IterateFieldsAndValues( *subType, types, 
+										indent + "  ", subfield_name,
+										IsPointerType( field.Type )) ;
+						if( IsPointerType( field.Type )) {
+							tmpl << " } else { t( " + subfield_name + ", \"null\");}\n";
+						}
+
 					}
 				}
 				// descend into sub-objects:
@@ -545,7 +570,7 @@ void Class<%name%>::IterateStaticFields(T t)
 			{
 				{"%name%", c.GetFullName()},
 				{"%iterate_fields%", IterateFields(c)},
-				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types, "    ", "c")},
+				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types, "    ", "c", false)},
 				{"%iterate_static_fields%", IterateStaticFields(c)},
 				{"%field_count%", to_string(c.Fields.size())},
 				{"%static_field_count%", to_string(c.StaticFields.size())},
