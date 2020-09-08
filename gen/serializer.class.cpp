@@ -51,15 +51,39 @@ namespace
 	{
 		// TODO cv-qualifiers etc
 		vector<string> arr = split( type, ' ' );
-		return arr[0];	
+		string first = arr[0];
+		if( !first.compare("const")) {
+			if (arr.size() > 1) {
+				return arr[1];
+			}
+		} else {	
+			return arr[0];	
+		}
+		return string("unknown");
 	}
-	bool IsArrayType(string type) 
+	bool IsPointerType(string type) 
 	{
 		vector<string> arr = split( type, ' ' );
 		for( string s : arr ) {
-			if( s.rfind( "[",0 )==0 )
+			if( s.rfind( "*",0 )==0 )
 				return true;
 		}
+		return false;
+	}
+	bool IsRefType(string type) 
+	{
+		vector<string> arr = split( type, ' ' );
+		for( string s : arr ) {
+			if( s.rfind( "&",0 )==0 )
+				return true;
+		}
+		return false;
+	}
+	bool IsArrayType(string type) 
+	{
+		size_t index = type.find( "[" );
+		if( index != string::npos ) 
+			return true;
 		return false;
 	}
 	bool GetArrayRank(string type) 
@@ -99,6 +123,11 @@ namespace
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
+			printf("got base [%s] arr=%d ptr=%d ref=%d from [%s]\n", base.c_str(), 
+				IsArrayType( field.Type ), 
+				IsPointerType( field.Type ), 
+				IsRefType( field.Type ), 
+				field.Type.c_str());
 			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) 
 				&& strcmp( base.c_str(), "char" )) { // not a char array
