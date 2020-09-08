@@ -6,6 +6,7 @@
 #include <set>
 #include <memory>
 #include <cstddef>
+#include <string>
 
 #include "serializer.function.hpp"
 #include "serializer.util.hpp"
@@ -82,41 +83,75 @@ namespace
 	{	
 		for( const auto& t : types ) {
 			if( !name.compare(t->GetFullName())) {
-				printf("findType : %s matches %s\n", name.c_str(), t->GetFullName().c_str());
+				//printf("findType : %s matches %s\n", name.c_str(), t->GetFullName().c_str());
 				return t.get();
 			}
- 			printf("findType : no match %s / %s\n", name.c_str(), t->GetFullName().c_str());
+ 			//printf("findType : no match %s / %s\n", name.c_str(), t->GetFullName().c_str());
 
 		}
 		return NULL;
 	}
 	
-	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types)
+	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types, string indent, string var_name)
 	{
 		stringstream tmpl;
-		
+		int field_count = 0;
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
 			if( IsFundamentalType( base ))  {
-				if( IsArrayType( field.Type ) && strcmp( base.c_str(), "char" )) { // not a char array
+				if( IsArrayType( field.Type ) 
+				&& strcmp( base.c_str(), "char" )) { // not a char array
+				
+					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
+					<< field.Name << ":\",\"\");\n";
+
 					int arraySize = GetArraySize( field.Type );
-					tmpl << " printf(\"got array type %s [%d]\",\"" << base << "\"," << arraySize << ");\n";
 					for( int i = 0 ; i < arraySize ; ++i ) {
-						tmpl << "	t(\"" + field.Name << "[" << i << "] - " << field.Type << ":\", c." << field.Name << "[" << i << "]);\n";
+						tmpl << "	t(\"" << indent << "  - " // << field.Type << " " 
+						"\", " << var_name << "." << field.Name << "[" << i << "]);\n";
 					}
 				} else {
-					tmpl << " printf(\"got base type %s \",\"" << base << ");\n";
-					tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", c." << field.Name << ");\n";
+					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
+					<< field.Name << ": \", " << var_name << "." << field.Name << ");\n";
 				}
 			} else {
-				tmpl << " printf(\"got subclass type %s \",\"" << base << "\");\n";
-				tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", \"subtype\");\n";
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
 				if( subType ) {
-					tmpl << IterateFieldsAndValues( *subType, types ) ;
-				} 
+					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
+					<< field.Name << ":\",\"\");\n";
+					if( IsArrayType( field.Type )) { 
+						int arraySize = GetArraySize( field.Type );
+						for( int i = 0 ; i < arraySize ; ++i ) {
+							tmpl << IterateFieldsAndValues( *subType, types, indent + "  - ", 
+							var_name + "." + field.Name + "[" + to_string(i) + "]" ) ;
+						}
+
+					} else {
+						tmpl << IterateFieldsAndValues( *subType, types, indent + "  ", var_name + "." + field.Name ) ;
+					}
+				}
+				// descend into sub-objects:
+				//tmpl << " printf(\"got subclass type %s \",\"" << base << "\");\n";
+//	
+//				<< field.Name << ":\", \"subtype\");\n";
+//				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
+//				if( subType ) {
+//					tmpl << IterateFieldsAndValues( *subType, types, indent + "    ", var_name + "." + field.Name ) ;
+//				} 
 			}
+			// yaml syntax requires list entries that are structs to be indented, and marked with "-" (but only on the first fielD) 
+			if( field_count == 0 ) {
+				size_t index = 0;
+				while( true ) {
+					index = indent.find( "-",index );
+					if( index == string::npos ) 
+						break;
+					indent.replace( index,1," " );
+					++index;
+				}	
+			}
+			field_count++;
 		}
 		return tmpl.str();
 	}
@@ -477,7 +512,7 @@ void Class<%name%>::IterateStaticFields(T t)
 			{
 				{"%name%", c.GetFullName()},
 				{"%iterate_fields%", IterateFields(c)},
-				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types)},
+				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types, "    ", "c")},
 				{"%iterate_static_fields%", IterateStaticFields(c)},
 				{"%field_count%", to_string(c.Fields.size())},
 				{"%static_field_count%", to_string(c.StaticFields.size())},
