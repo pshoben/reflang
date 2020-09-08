@@ -55,6 +55,9 @@ namespace
 		o << R"(#include <string>
 
 )";
+		// reflection must see private fields:
+		o << "#define private public\n";
+
 		o << options.include_path << "\n";
 
 		// Generate unique list of includes.
@@ -67,6 +70,7 @@ namespace
 		{
 			o << "#include \"" << header << "\"\n";
 		}
+		o << "#undef private\n";
 
 		o << R"(
 namespace reflang
