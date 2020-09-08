@@ -6,12 +6,14 @@
 #include "serializer.hpp"
 #include "types.hpp"
 
+using std::ostream;
+
 namespace reflang
 {
 	namespace serializer
 	{
-		void SerializeClassHeader(std::ostream& o, const Class& c);
-		void SerializeClassSources(std::ostream& o, const Class& c);
+		void SerializeClassHeader(ostream& o, const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types);
+		void SerializeClassSources(ostream& o, const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types);
 	}
 }
 

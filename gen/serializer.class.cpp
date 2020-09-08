@@ -4,6 +4,8 @@
 #include <sstream>
 #include <vector>
 #include <set>
+#include <memory>
+#include <cstddef>
 
 #include "serializer.function.hpp"
 #include "serializer.util.hpp"
@@ -76,15 +78,27 @@ namespace
 		return 0;
 	}
 
-	string IterateFieldsAndValues(const Class& c)
+	const TypeBase * findType(const string & name, const std::vector<std::unique_ptr<TypeBase>>& types)
+	{	
+		for( const auto& t : types ) {
+			if( !name.compare(t->GetFullName())) {
+				printf("findType : %s matches %s\n", name.c_str(), t->GetFullName().c_str());
+				return t.get();
+			}
+ 			printf("findType : no match %s / %s\n", name.c_str(), t->GetFullName().c_str());
+
+		}
+		return NULL;
+	}
+	
+	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types)
 	{
 		stringstream tmpl;
-
 		
-		for (const auto& field : c.Fields)
-		{
+		for (const auto& field : c.Fields) {
+		
 			string base = GetBaseType(field.Type);
-			if( IsFundamentalType( base )) {
+			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) && strcmp( base.c_str(), "char" )) { // not a char array
 					int arraySize = GetArraySize( field.Type );
 					tmpl << " printf(\"got array type %s [%d]\",\"" << base << "\"," << arraySize << ");\n";
@@ -92,16 +106,16 @@ namespace
 						tmpl << "	t(\"" + field.Name << "[" << i << "] - " << field.Type << ":\", c." << field.Name << "[" << i << "]);\n";
 					}
 				} else {
-					tmpl << " printf(\"got base type %s \",\"" << base << "\");\n";
+					tmpl << " printf(\"got base type %s \",\"" << base << ");\n";
 					tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", c." << field.Name << ");\n";
 				}
 			} else {
 				tmpl << " printf(\"got subclass type %s \",\"" << base << "\");\n";
 				tmpl << "	t(\"" << field.Name << " - " << field.Type << ":\", \"subtype\");\n";
-				//void * f = (void *) ::reflang::registry::GetByName(base);
-				///* Class* subclass = */ GetClassByName(base);
-			 	//string sub = IterateFieldsAndValues(subclass);	
-				//tmpl << sub;
+				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
+				if( subType ) {
+					tmpl << IterateFieldsAndValues( *subType, types ) ;
+				} 
 			}
 		}
 		return tmpl.str();
@@ -379,7 +393,7 @@ Object Method<decltype(%pointer%), %pointer%>::Invoke(
 	}
 }
 
-void serializer::SerializeClassHeader(ostream& o, const Class& c)
+void serializer::SerializeClassHeader(ostream& o, const Class& c,	const std::vector<std::unique_ptr<TypeBase>>& types)
 {
 	stringstream tmpl;
 	tmpl << R"(
@@ -463,7 +477,7 @@ void Class<%name%>::IterateStaticFields(T t)
 			{
 				{"%name%", c.GetFullName()},
 				{"%iterate_fields%", IterateFields(c)},
-				{"%iterate_fields_and_values%", IterateFieldsAndValues(c)},
+				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types)},
 				{"%iterate_static_fields%", IterateStaticFields(c)},
 				{"%field_count%", to_string(c.Fields.size())},
 				{"%static_field_count%", to_string(c.StaticFields.size())},
@@ -474,7 +488,7 @@ void Class<%name%>::IterateStaticFields(T t)
 			});
 }
 
-void serializer::SerializeClassSources(ostream& o, const Class& c)
+void serializer::SerializeClassSources(ostream& o, const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types)
 {
 	stringstream tmpl;
 	tmpl << R"(

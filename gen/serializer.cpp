@@ -147,7 +147,7 @@ void serializer::Serialize(
 			SerializeFunctionHeader(*out_hpp, static_cast<const Function&>(*type));
 			break;
 		case TypeBase::Type::Class:
-			SerializeClassHeader(*out_hpp, static_cast<const Class&>(*type));
+			SerializeClassHeader(*out_hpp, static_cast<const Class&>(*type), types);
 			break;
 		}
 		*out_hpp << "\n\n";
@@ -166,7 +166,7 @@ void serializer::Serialize(
 			SerializeFunctionSources(*out_cpp, static_cast<const Function&>(*type));
 			break;
 		case TypeBase::Type::Class:
-			SerializeClassSources(*out_cpp, static_cast<const Class&>(*type));
+			SerializeClassSources(*out_cpp, static_cast<const Class&>(*type), types);
 			break;
 		}
 		*out_cpp << "\n\n";

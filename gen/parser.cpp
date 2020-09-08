@@ -55,7 +55,6 @@ namespace
 	struct GetTypesStruct
 	{
 		vector<unique_ptr<TypeBase>>* types;
-		map<string,TypeBase*>* types_map;
 		const parser::Options* options;
 	};
 
@@ -90,7 +89,6 @@ namespace
 		{
 			printf("parser got type %s\n",name.c_str());
 			data->types->push_back(std::move(type));
-			data->types_map->insert( pair<string,TypeBase*>( name,type.get()));
 		}
 
 		return CXChildVisit_Recurse;
@@ -126,7 +124,7 @@ vector<unique_ptr<TypeBase>> parser::GetTypes(
 
 		auto cursor = clang_getTranslationUnitCursor(unit);
 
-		GetTypesStruct data = { &results, new map<string,TypeBase*>, &options };
+		GetTypesStruct data = { &results, &options };
 		clang_visitChildren(cursor, GetTypesVisitor, &data);
 
 		clang_disposeTranslationUnit(unit);
