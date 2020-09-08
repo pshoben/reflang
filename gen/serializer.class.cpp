@@ -128,6 +128,10 @@ namespace
 				IsPointerType( field.Type ), 
 				IsRefType( field.Type ), 
 				field.Type.c_str());
+			string redirect = "";
+			if( IsPointerType( field.Type )) {
+				redirect = "*";
+			}
 			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) 
 				&& strcmp( base.c_str(), "char" )) { // not a char array
@@ -138,11 +142,11 @@ namespace
 					int arraySize = GetArraySize( field.Type );
 					for( int i = 0 ; i < arraySize ; ++i ) {
 						tmpl << "	t(\"" << indent << "  - " // << field.Type << " " 
-						"\", " << var_name << "." << field.Name << "[" << i << "]);\n";
+						"\", " << redirect << var_name << "." << field.Name << "[" << i << "]);\n";
 					}
 				} else {
 					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
-					<< field.Name << ": \", " << var_name << "." << field.Name << ");\n";
+					<< field.Name << ": \", " << redirect << var_name << "." << field.Name << ");\n";
 				}
 			} else {
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
@@ -153,11 +157,11 @@ namespace
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 							tmpl << IterateFieldsAndValues( *subType, types, indent + "  - ", 
-							var_name + "." + field.Name + "[" + to_string(i) + "]" ) ;
+							redirect + var_name + "." + field.Name + "[" + to_string(i) + "]" ) ;
 						}
 
 					} else {
-						tmpl << IterateFieldsAndValues( *subType, types, indent + "  ", var_name + "." + field.Name ) ;
+						tmpl << IterateFieldsAndValues( *subType, types, indent + "  ", redirect + var_name + "." + field.Name ) ;
 					}
 				}
 				// descend into sub-objects:
