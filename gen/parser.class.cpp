@@ -43,13 +43,10 @@ namespace
 		return field;
 	}
 
-	NamedObject GetBaseClassFromCursor(CXCursor cursor)
+	string GetBaseClassFromCursor(CXCursor cursor)
 	{
-		NamedObject field;
-		field.Name = clang_getCString(clang_getCursorSpelling(cursor));	
-		printf("got base class %s\n",field.Name.c_str());
-		//field.Type = parser::GetName(clang_getCursorType(cursor));
-		return field;
+		string base_class_name = clang_getCString(clang_getCursorSpelling(cursor));	
+		return base_class_name.erase(0,6); // remove the "class " prefix of "class BaseType"
 	}
 
 	CXChildVisitResult VisitClass(
@@ -57,10 +54,8 @@ namespace
 	{
 		auto* c = reinterpret_cast<Class*>(client_data);
 
-		printf("VisitClass got CXXCursorKind(%d)\n",clang_getCursorKind(cursor));
-
-		//if (clang_getCXXAccessSpecifier(cursor) == CX_CXXPublic)
-		//{
+		if (clang_getCXXAccessSpecifier(cursor) == CX_CXXPublic)
+		{
 			switch (clang_getCursorKind(cursor))
 			{
 			case CXCursor_CXXMethod:
@@ -74,20 +69,12 @@ namespace
 				}
 				break;
 			case CXCursor_FieldDecl:
-				printf("VisitClass got CXXCursorKind(%d) CXCursor_FieldDecl \n",clang_getCursorKind(cursor));
 				c->Fields.push_back(GetFieldFromCursor(cursor));
 				break;
 			case CXCursor_CXXBaseSpecifier:
 			{
-				printf("VisitClass got CXXCursorKind(%d) CXCursor_CXXBaseSpecifier \n",clang_getCursorKind(cursor));
-//				clang::LangOptions lo;
-//				struct clang::PrintingPolicy pol(lo);
-//				pol.adjustForCPlusPlus();
-//				pol.TerseOutput = true;
-//				pol.FullyQualifiedName = true;
-//				string rv = clang_getCursorPrettyPrinted(cursor, &pol);
-				//printf("VisitClass got base specifier %s\n",rv);
-				NamedObject no = GetBaseClassFromCursor(cursor);
+				string base_class_name = GetBaseClassFromCursor(cursor);
+				c->BaseClasses.push_back( base_class_name );
 				break;
 			}
 			case CXCursor_VarDecl:
@@ -96,7 +83,7 @@ namespace
 			default:
 				break;
 			}
-		//}
+		}
 		return CXChildVisit_Continue;
 	}
 }

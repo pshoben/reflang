@@ -97,7 +97,6 @@ namespace
 			size_t index = s.rfind( "[" ) ;
 			if( index != string::npos ) {
 				string trimmed = s.substr( index+1,s.size()-(index+2) ); // remove the surrounding [ ] 
-				//printf("trimming start %lu end %lu of %s to [%s]\n", index, s.size()-(index+2), s.c_str(), trimmed.c_str());
 				return std::stoi(trimmed);
 			}
 		}
@@ -109,11 +108,8 @@ namespace
 	{	
 		for( const auto& t : types ) {
 			if( !name.compare(t->GetFullName())) {
-				//printf("findType : %s matches %s\n", name.c_str(), t->GetFullName().c_str());
 				return t.get();
 			}
- 			//printf("findType : no match %s / %s\n", name.c_str(), t->GetFullName().c_str());
-
 		}
 		return NULL;
 	}
@@ -123,15 +119,21 @@ namespace
 		stringstream tmpl;
 		int field_count = 0;
 		string redirect_parent = (is_pointer) ? "->" : ".";
+
+		for (const auto& base_class_name : c.BaseClasses) {
+			const Class * baseType = dynamic_cast<const Class*>(findType( base_class_name, types ));
+			if( baseType ) {
+				tmpl << "	t(\"" << indent
+				<< "base class " << base_class_name << ":\",\"\");\n";
+				tmpl << IterateFieldsAndValues( *baseType, types, 
+								indent + "  ", var_name,
+								false );
+			}
+		}
+
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
-			printf("got base [%s] arr=%d arrsize=%d, ptr=%d ref=%d from [%s]\n", base.c_str(), 
-				IsArrayType( field.Type ),
-				GetArraySize( field.Type ),
-				IsPointerType( field.Type ), 
-				IsRefType( field.Type ), 
-				field.Type.c_str());
 			string redirect_field = "";
 			string subtype_redirect = ".";
 			if( IsPointerType( field.Type )) {
@@ -189,14 +191,6 @@ namespace
 
 					}
 				}
-				// descend into sub-objects:
-				//tmpl << " printf(\"got subclass type %s \",\"" << base << "\");\n";
-//	
-//				<< field.Name << ":\", \"subtype\");\n";
-//				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
-//				if( subType ) {
-//					tmpl << IterateFieldsAndValues( *subType, types, indent + "    ", var_name + "." + field.Name ) ;
-//				} 
 			}
 			// yaml syntax requires list entries that are structs to be indented, and marked with "-" (but only on the first fielD) 
 			if( field_count == 0 ) {

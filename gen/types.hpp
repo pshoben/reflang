@@ -70,6 +70,7 @@ namespace reflang
 		Class(std::string file, std::string full_name);
 		Type GetType() const override;
 
+		std::vector<std::string> BaseClasses;
 		MethodList Methods;
 		MethodList StaticMethods;
 

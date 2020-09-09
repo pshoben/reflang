@@ -87,7 +87,6 @@ namespace
 				&& regex_match(name, data->options->include)
 				&& !regex_match(name, data->options->exclude))
 		{
-			printf("parser got type %s\n",name.c_str());
 			data->types->push_back(std::move(type));
 		}
 
