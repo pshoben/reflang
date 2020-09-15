@@ -135,10 +135,10 @@ namespace
 		
 			string base = GetBaseType(field.Type);
 			string redirect_field = "";
-			string subtype_redirect = ".";
+			//string subtype_redirect = ".";
 			if( IsPointerType( field.Type )) {
 				redirect_field = "*";
-				subtype_redirect = "->";
+				//subtype_redirect = "->";
 			}
 			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) 
@@ -217,7 +217,7 @@ namespace
 	{
 		stringstream tmpl;
 		int field_count = 0;
-		string redirect_parent = "->";
+		//string "->" = "->";
 
 		bool found_base_class = false;
 		for (const auto& base_class_name : c.BaseClasses) {
@@ -228,8 +228,8 @@ namespace
 				tmpl << "	lprint( indent, \""
 				<< "base class " << base_class_name << ":\",\"\" );\n";
 
-				tmpl << "	Class<" << base_class_name << ">::print_class_yaml(c, indent + \"    \", lprint );\n" ; 
-//				<< " static_cast<" << base_class_name << ">(c), indent + \"    \", lprint );\n" ;
+//				tmpl << "	Class<" << base_class_name << ">::print_class_yaml(c, indent + \"    \", lprint );\n" ; 
+				tmpl << "	Class<" << base_class_name << ">::print_class_yaml( static_cast<const " << base_class_name << " * >(c), indent + \"    \", lprint );\n" ;
 			}
 		}
 		if( found_base_class ) {
@@ -239,12 +239,12 @@ namespace
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
-			string redirect_field = "";
-			string subtype_redirect = ".";
-			if( IsPointerType( field.Type )) {
-				redirect_field = "*";
-				subtype_redirect = "->";
-			}
+//			string redirect_field = "";
+//			//string subtype_redirect = ".";
+//			if( IsPointerType( field.Type )) {
+//				redirect_field = "*";
+//				//subtype_redirect = "->";
+//			}
 			if( IsFundamentalType( base ))  {
 				if( IsArrayType( field.Type ) 
 				&& strcmp( base.c_str(), "char" )) { // not a char array
@@ -254,12 +254,28 @@ namespace
 
 					int arraySize = GetArraySize( field.Type );
 					for( int i = 0 ; i < arraySize ; ++i ) {
-						tmpl << "	lprint( indent, \"" << "  - " 
-						"\", " << redirect_field << var_name << redirect_parent << field.Name << "[" << i << "]);\n";
+						if( IsPointerType( field.Type )) {
+							tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) {\n";
+							tmpl << "		lprint( indent + \"  - \", \"\", *(" << var_name << "->" << field.Name << "[" << i << "]));\n"; 
+							tmpl << "	} else {\n";
+							tmpl << "		lprint( indent + \"  - \", \"\", \"null\" );\n";
+							tmpl << "	}\n";
+						} else {
+							tmpl << "	lprint( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]);\n"; 
+						}	
 					}
 				} else {
-					tmpl << "	lprint( indent, \"" 
-					<< field.Name << ": \", " << redirect_field << var_name << redirect_parent << field.Name << ");\n";
+					if( IsPointerType( field.Type )) {
+						tmpl << "	if( " <<  var_name << "->" << field.Name << ") {\n";
+						tmpl << "		lprint( indent, \"" << field.Name << ": \", *(" << var_name << "->" << field.Name << "));\n";
+						tmpl << "	} else {\n";
+						tmpl << "		lprint( indent, \"" << field.Name << ":\", \"null\" );\n";
+						tmpl << "	}\n";
+
+					} else {
+						tmpl << "	lprint( indent, \"" 
+						<< field.Name << ": \", " << var_name << "->" << field.Name << ");\n";
+					}	
 				}
 			} else {
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
@@ -271,7 +287,7 @@ namespace
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 
-							string subfield_name = var_name + redirect_parent + field.Name + "[" + to_string(i) + "]";
+							string subfield_name = var_name + "->" + field.Name + "[" + to_string(i) + "]";
 							tmpl << "	lprint( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",\"\" );\n";
 	
 							if( IsPointerType( field.Type )) {
@@ -292,7 +308,7 @@ namespace
 							}
 						}
 					} else {
-						string subfield_name = var_name + redirect_parent + field.Name;
+						string subfield_name = var_name + "->" + field.Name;
 
 						if( IsPointerType( field.Type )) {
 							tmpl << "	if( " <<  subfield_name  << " ) {\n";
