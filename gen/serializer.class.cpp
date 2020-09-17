@@ -11,9 +11,12 @@
 #include "serializer.function.hpp"
 #include "serializer.util.hpp"
 #include "tests/catch.hpp"
+#include <cstdarg>
+#include <algorithm>
 
 using namespace std;
 using namespace reflang;
+using reflang::serializer::sub;
 
 #define LLL  tmpl<<"//# line "<<__LINE__<<"\n";
 
@@ -233,6 +236,29 @@ namespace
 //		return type_name;	
 //	}
 
+//	string replace_all( string str, const string& from, const string& to) {
+//	    size_t start_pos = 0;
+//	    while(( start_pos = str.find(from, start_pos)) != string::npos) {
+//	        str.replace(start_pos, from.length(), to);
+//	        start_pos += to.length(); // Handles case where 'to' is a substring of 'from'
+//	    }
+//	    return str;
+//	}
+//
+//	void sub( stringstream& tmpl, int line_number, string raw, int num, ...) 
+//	{
+//		va_list valist;
+//   		va_start( valist, num );
+//		for( int i = 0; i < num; i++) {
+//			char marker[4];
+//			sprintf(marker,"$%d",i);
+//			raw = replace_all( raw, marker, va_arg(valist, const char *)); 
+//		}
+//		va_end(valist);
+//		printf("sub after: [%s]\n",raw.c_str());
+//		tmpl << raw << " // " << line_number  << '\n';
+//	}
+
 	string print_class_yaml(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types,  string indent, string var_name )
 	{
 		stringstream tmpl;
@@ -245,8 +271,10 @@ namespace
 			if( baseType ) {
 
 				found_base_class = true;
-				tmpl << "	lprint( indent, \""
-				<< "base class " << base_class_name << ":\",\"\" ); // line " << __LINE__ << "\n";
+				sub( tmpl, R"""( 	lprint( indent, "base class $1:", ""); // line $2)""", 1, base_class_name, __LINE__);
+
+				//tmpl << "	lprint( indent, \""
+				//<< "base class " << base_class_name << ":\",\"\" ); // line " << __LINE__ << "\n";
 				tmpl << "	Class<" << base_class_name << ">::print_class_yaml( static_cast<const " << base_class_name << " * >(c), indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
 			}
 		}
@@ -1016,3 +1044,5 @@ namespace
 				{"%get_static_method_impl%", GetStaticMethodImpl(c)}
 			});
 }
+
+	
