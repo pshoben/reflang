@@ -53,6 +53,7 @@ namespace
 		}
 
 		o << R"(#include <string>
+#include <cstring>
 
 )";
 		// reflection must see private fields:

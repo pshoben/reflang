@@ -239,94 +239,97 @@ namespace
 
 				found_base_class = true;
 				tmpl << "	lprint( indent, \""
-				<< "base class " << base_class_name << ":\",\"\" );\n";
-				tmpl << "	Class<" << base_class_name << ">::print_class_yaml( static_cast<const " << base_class_name << " * >(c), indent + \"    \", lprint );\n" ;
+				<< "base class " << base_class_name << ":\",\"\" ); // line " << __LINE__ << "\n";
+				tmpl << "	Class<" << base_class_name << ">::print_class_yaml( static_cast<const " << base_class_name << " * >(c), indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
 			}
 		}
 		if( found_base_class ) {
-			tmpl << "\n";
+			tmpl << " // line " << __LINE__ << "\n";
 		}
 
 		for (const auto& field : c.Fields) {
 		
 			string base = GetBaseType(field.Type);
 			if( IsFundamentalType( base ))  {
-				if( IsArrayType( field.Type ) 
-				&& strcmp( base.c_str(), "char" )) { // not a char array
-				
-					tmpl << "	lprint( indent, \""
-					<< field.Name << ":\",\"\" );\n";
-
-					int arraySize = GetArraySize( field.Type );
-					for( int i = 0 ; i < arraySize ; ++i ) {
-						if( IsPointerType( field.Type )) {
-							tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) {\n";
-							tmpl << "		lprint( indent + \"  - \", \"\", *(" << var_name << "->" << field.Name << "[" << i << "]));\n"; 
-							tmpl << "	} else {\n";
-							tmpl << "		lprint( indent + \"  - \", \"\", \"null\" );\n";
-							tmpl << "	}\n";
-						} else {
-							tmpl << "	lprint( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]);\n"; 
-						}	
+				if( IsArrayType( field.Type ))  {
+					if( strcmp( base.c_str(), "char" )) { // not a char array
+			
+						tmpl << "	lprint( indent, \""
+						<< field.Name << ":\",\"\" ); // line " << __LINE__ << "\n";
+	
+						int arraySize = GetArraySize( field.Type );
+						for( int i = 0 ; i < arraySize ; ++i ) {
+							if( IsPointerType( field.Type )) {
+								tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) { // line " << __LINE__ << "\n";
+								tmpl << "		lprint( indent + \"  - \", \"\", *(" << var_name << "->" << field.Name << "[" << i << "])); // line " << __LINE__ << "\n"; 
+								tmpl << "	} else {\n";
+								tmpl << "		lprint( indent + \"  - \", \"\", \"null\" ); // line " << __LINE__ << "\n";
+								tmpl << "	}\n";
+							} else {
+								tmpl << "	lprint( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]); // line " << __LINE__ << "\n"; 
+							}	
+						}
+					} else {
+						tmpl << "	lprint( indent, \"" << field.Name << ":\", " << var_name << "->" << field.Name << " ); // line " << __LINE__ << "\n";
 					}
 				} else {
 					if( IsPointerType( field.Type )) {
-						tmpl << "	if( " <<  var_name << "->" << field.Name << ") {\n";
-						tmpl << "		lprint( indent, \"" << field.Name << ": \", *(" << var_name << "->" << field.Name << "));\n";
+						tmpl << "	if( " <<  var_name << "->" << field.Name << ") { // line " << __LINE__ << "\n";
+						tmpl << "		lprint( indent, \"" << field.Name << ": \", *(" << var_name << "->" << field.Name << ")); // line " << __LINE__ << "\n";
 						tmpl << "	} else {\n";
-						tmpl << "		lprint( indent, \"" << field.Name << ":\", \"null\" );\n";
+						tmpl << "		lprint( indent, \"" << field.Name << ":\", \"null\" ); // line " << __LINE__ << "\n";
 						tmpl << "	}\n";
 
 					} else {
 						tmpl << "	lprint( indent, \"" 
-						<< field.Name << ": \", " << var_name << "->" << field.Name << ");\n";
+						<< field.Name << ": \", " << var_name << "->" << field.Name << "); // line " << __LINE__ << "\n";
 					}	
 				}
 			} else {
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
 				if( subType ) {
-					tmpl << "\n";
-					tmpl << "	lprint( indent, \"" << field.Name << ":\",\"\" );\n";
+					tmpl << " // line " << __LINE__ << "\n";
+					tmpl << "	lprint( indent, \"" << field.Name << ":\",\"\" ); // line " << __LINE__ << "\n";
 
 					if( IsArrayType( field.Type )) { 
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 
 							string subfield_name = var_name + "->" + field.Name + "[" + to_string(i) + "]";
-							tmpl << "	lprint( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",\"\" );\n";
+							tmpl << "	lprint( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",\"\" ); // line " << __LINE__ << "\n";
 	
 							if( IsPointerType( field.Type )) {
 
-								tmpl << "	if( " <<  subfield_name  << " ) {\n";
+								tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
 						
 								tmpl << "		Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-								<< " " << subfield_name << ", indent + \"    \", lprint );\n" ;
+								<< " " << subfield_name << ", indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
 
 								tmpl << "	} else {\n";
-								tmpl << "		lprint( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", \"null\" );\n";
+								tmpl << "		lprint( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", \"null\" ); // line " << __LINE__ << "\n";
 								tmpl << "	}\n";
 
 							} else {
 
 								tmpl << "	Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-								<< " &(" << subfield_name << "), indent + \"        \", lprint );\n" ;
+								<< " &(" << subfield_name << "), indent + \"        \", lprint ); // line " << __LINE__ << "\n" ;
 							}
 						}
 					} else {
 						string subfield_name = var_name + "->" + field.Name;
 
 						if( IsPointerType( field.Type )) {
-							tmpl << "	if( " <<  subfield_name  << " ) {\n";
+							tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
 						
 							tmpl << "		Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-							<< " " << subfield_name << ", indent + \"    \", lprint );\n" ;
+							<< " " << subfield_name << ", indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
 
 							tmpl << "	} else {\n";
-							tmpl << "		lprint( indent + \"    \", \"" + field.Name << ":\", \"null\" );\n";
+							tmpl << "		lprint( indent + \"    \", \"" + field.Name << ":\", \"null\" ); // line " << __LINE__ << "\n";
 							tmpl << "	}\n";
 						} else {
 							tmpl << "	Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-							<< " &(" << subfield_name << "), indent + \"    \", lprint );\n" ;
+							<< " &(" << subfield_name << "), indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
 						}
 					}
 				}
@@ -352,7 +355,7 @@ namespace
 		stringstream tmpl;
 		int field_count = 0;
 
-		tmpl << "	char val_str[1024];\n"; // lread any val_str values into here
+		tmpl << "	char val_str[1024]; // line " << __LINE__ << "\n"; // lread any val_str values into here
 
 		bool found_base_class = false;
 		for (const auto& base_class_name : c.BaseClasses) {
@@ -361,59 +364,62 @@ namespace
 
 				found_base_class = true;
 	
-				tmpl << "	lread( indent, \"" << "base class " << base_class_name << ":\", val_str);\n";
-				tmpl << "	Class<" << base_class_name << ">::read_class_yaml( static_cast< " << base_class_name << " * >(c), indent + \"    \", lread );\n" ;
+				tmpl << "	lread( indent, \"" << "base class " << base_class_name << ":\", val_str); // line " << __LINE__ << "\n";
+				tmpl << "	Class<" << base_class_name << ">::read_class_yaml( static_cast< " << base_class_name << " * >(c), indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 			}
 		}
 		if( found_base_class ) {
-			tmpl << "\n";
+			tmpl << " // line " << __LINE__ << "\n";
 		}
 
 		for (const auto& field : c.Fields) {
 
-			tmpl << "	memset(val_str, 0, sizeof(val_str));\n";
+			tmpl << "	memset(val_str, 0, sizeof(val_str)); // line " << __LINE__ << "\n";
 	
 			string base = GetBaseType(field.Type);
 
 			if( IsFundamentalType( base ))  {
-				if( IsArrayType( field.Type ) 
-				&& strcmp( base.c_str(), "char" )) { // not a char array
+				if( IsArrayType( field.Type ))  {
+					if( strcmp( base.c_str(), "char" )) { // not a char array
 
-					tmpl << "	lread( indent, \"" << field.Name << ":\", val_str );\n";
-
-					int arraySize = GetArraySize( field.Type );
-					for( int i = 0 ; i < arraySize ; ++i ) {
-//						if( IsPointerType( field.Type )) {
-//							tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) {\n";
-//							tmpl << "		lread( indent + \"  - \", \"\", *(" << var_name << "->" << field.Name << "[" << i << "]));\n"; 
-//							tmpl << "	} else {\n";
-//							tmpl << "		lread( indent + \"  - \", \"\", val_str );\n";
-//							tmpl << "	}\n";
-//						} else {
-//							tmpl << "	lread( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]);\n"; 
-//						}	
+						tmpl << "	lread( indent, \"" << field.Name << ":\", val_str ); // line " << __LINE__ << " // line " << __LINE__ << "\n";
+						int arraySize = GetArraySize( field.Type );
+						for( int i = 0 ; i < arraySize ; ++i ) {
+//							if( IsPointerType( field.Type )) {
+//								tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) { // line " << __LINE__ << "\n";
+//								tmpl << "		lread( indent + \"  - \", \"\", *(" << var_name << "->" << field.Name << "[" << i << "])); // line " << __LINE__ << "\n"; 
+//								tmpl << "	} else { // line " << __LINE__ << "\n";
+//								tmpl << "		lread( indent + \"  - \", \"\", val_str ); // line " << __LINE__ << "\n";
+//								tmpl << "	} // line " << __LINE__ << "\n";
+//							} else {
+//								tmpl << "	lread( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]); // line " << __LINE__ << "\n"; 
+//							}	
+						}
+					} else {
+						tmpl << "	lread( indent, \"" << field.Name << ":\", val_str ); // line " << __LINE__ << "\n";
+						tmpl << "	strcpy( (char *)(" << var_name << "->" << field.Name << "), val_str ); // line " << __LINE__ << "\n";
 					}
 				} else {
 					if( IsPointerType( field.Type )) {
-						tmpl << "	if( " <<  var_name << "->" << field.Name << ") {\n";
+						tmpl << "	if( " <<  var_name << "->" << field.Name << " ) { // line " << __LINE__ << "\n";
 						if( IsIntType( base )) {
-							tmpl << "		lread( indent, \"" << field.Name << ": \", val_str );\n";
-							tmpl << "		*(" << var_name << "->" << field.Name << ") = (" << base << ") atol(val_str);\n";
+							tmpl << "		lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
+							tmpl << "		*(" << var_name << "->" << field.Name << ") = (" << base << ") atol(val_str); // line " << __LINE__ << "\n";
 						} else if( IsFloatType( base )) {
-							tmpl << "		lread( indent, \"" << field.Name << ": \", val_str );\n";
-							tmpl << "		" << var_name << "->" << field.Name << " = (" << base << ") atof(val_str);\n";
+							tmpl << "		lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
+							tmpl << "		*(" << var_name << "->" << field.Name << ") = (" << base << ") atof(val_str); // line " << __LINE__ << "\n";
 						}
 						tmpl << "	} else {\n";
-						tmpl << "		lread( indent, \"" << field.Name << ":\", val_str );\n";
+						tmpl << "		lread( indent, \"" << field.Name << ":\", val_str ); // line " << __LINE__ << "\n";
 						tmpl << "	}\n";
 
 					} else {
 						if( IsIntType( base )) {
-							tmpl << "	lread( indent, \"" << field.Name << ": \", val_str );\n";
-							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atol(val_str);\n";
+							tmpl << "	lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
+							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atol(val_str); // line " << __LINE__ << "\n";
 						} else if( IsFloatType( base )) {
-							tmpl << "	lread( indent, \"" << field.Name << ": \", val_str );\n";
-							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atof(val_str);\n";
+							tmpl << "	lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
+							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atof(val_str); // line " << __LINE__ << "\n";
 						}
 					}	
 				}
@@ -421,48 +427,48 @@ namespace
 
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
 				if( subType ) {
-					tmpl << "\n";
-					tmpl << "	lread( indent, \"" << field.Name << ":\", val_str);\n";
+					tmpl << " // line " << __LINE__ << "\n";
+					tmpl << "	lread( indent, \"" << field.Name << ":\", val_str); // line " << __LINE__ << "\n";
 
 					if( IsArrayType( field.Type )) { 
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 
 							string subfield_name = var_name + "->" + field.Name + "[" + to_string(i) + "]";
-							tmpl << "	lread( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",val_str);\n";
+							tmpl << "	lread( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",val_str); // line " << __LINE__ << "\n";
 	
 							if( IsPointerType( field.Type )) {
 
-								tmpl << "	if( " <<  subfield_name  << " ) {\n";
+								tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
 						
 								tmpl << "		Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-								<< " " << subfield_name << ", indent + \"    \", lread );\n" ;
+								<< " " << subfield_name << ", indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 
 								tmpl << "	} else {\n";
-								tmpl << "		lread( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", val_str);\n";
+								tmpl << "		lread( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", val_str); // line " << __LINE__ << "\n";
 								tmpl << "	}\n";
 
 							} else {
 
 								tmpl << "	Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-								<< " &(" << subfield_name << "), indent + \"        \", lread );\n" ;
+								<< " &(" << subfield_name << "), indent + \"        \", lread ); // line " << __LINE__ << "\n" ;
 							}
 						}
 					} else {
 						string subfield_name = var_name + "->" + field.Name;
 
 						if( IsPointerType( field.Type )) {
-							tmpl << "	if( " <<  subfield_name  << " ) {\n";
+							tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
 						
 							tmpl << "		Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-							<< " " << subfield_name << ", indent + \"    \", lread );\n" ;
+							<< " " << subfield_name << ", indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 
 							tmpl << "	} else {\n";
-							tmpl << "		lread( indent + \"    \", \"" + field.Name << ":\", val_str);\n";
+							tmpl << "		lread( indent + \"    \", \"" + field.Name << ":\", val_str); // line " << __LINE__ << "\n";
 							tmpl << "	}\n";
 						} else {
 							tmpl << "	Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-							<< " &(" << subfield_name << "), indent + \"    \", lread );\n" ;
+							<< " &(" << subfield_name << "), indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 						}
 					}
 				}
