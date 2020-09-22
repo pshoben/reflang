@@ -231,30 +231,29 @@ namespace
 		return tmpl.str();
 	}
 
-//	string get_base_type(string type_name) {
-//		printf("GetBaseType(%s) > (%s)\n", type_name.c_str(), type_name.c_str());
-//		return type_name;	
-//	}
-
 	string print_class_yaml(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types,  string indent, string var_name )
 	{
 		stringstream tmpl;
 		int field_count = 0;
-		//string "->" = "->";
 
-		bool found_base_class = false;
+		//bool found_base_class = false;
 		for (const auto& base_class_name : c.BaseClasses) {
 			const Class * baseType = dynamic_cast<const Class*>(findType( base_class_name, types ));
 			if( baseType ) {
+		//		found_base_class = true;
 
-				found_base_class = true;
-				sub( tmpl, R"""( 	lprint( indent, "base class $1:", ""); // line $2 )""", 1, base_class_name, __LINE__ );
-				sub( tmpl, R"""( 	Class<$1>::print_class_yaml( static_cast<const $1 * >(c), indent + "    ", lprint ); // line $2 )""", 1, base_class_name, __LINE__ );
+				sub( tmpl, R"""(
+ 	lprint( indent, "base class $1: ", ""); // line $2 
+				)""", 1, base_class_name, __LINE__ );
+
+				sub( tmpl, R"""(
+ 	Class<$1>::print_class_yaml( static_cast<const $1 * >(c), indent + "    ", lprint ); // line $2 
+				)""", 1, base_class_name, __LINE__ );
 			}
 		}
-		if( found_base_class ) {
-			tmpl << "\n";
-		}
+//		if( found_base_class ) {
+//			tmpl << "\n";
+//		}
 
 		for (const auto& field : c.Fields) {
 		
@@ -263,11 +262,14 @@ namespace
 				if( IsArrayType( field.Type ))  {
 					if( strcmp( base.c_str(), "char" )) { // not a char array
 			
-						sub( tmpl, R"""(	lprint( indent, "$1:", ""); // line $2 )""", 1, field.Name,  __LINE__ );
+						sub( tmpl, R"""(
+	lprint( indent, "$1: ", ""); // line $2 
+						)""", 1, field.Name,  __LINE__ );
 	
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 							if( IsPointerType( field.Type )) {
+
 								sub( tmpl, R"""(
 	if( $1->$2[$3] ) { // line $4
 		lprint( indent + "  - ", "", *( $1->$2[$3] ));
@@ -275,111 +277,86 @@ namespace
 		lprint( indent + "  - ", "", "null" ) ;
 	}
 								)""", 1, var_name, field.Name, i, __LINE__ );
+
 							} else {
 								sub( tmpl, R"""(
 	lprint( indent + "  - ", "", $1->$2[$3] ); // line $4
 								)""", 1, var_name, field.Name, i, __LINE__ );
-								//tmpl << "	lprint( indent +  \"  - \", \"\", " << var_name << "->" << field.Name << "[" << i << "]); // line " << __LINE__ << "\n"; 
 							}	
 						}
 					} else {
 						sub( tmpl, R"""(
-	lprint( indent, "$2:", $1->$2 ); // line $3
+	lprint( indent, "$2: ", $1->$2 ); // line $3
 						)""", 1, var_name, field.Name, __LINE__ );
-						//tmpl << "	lprint( indent, \"" << field.Name << ":\", " << var_name << "->" << field.Name << " ); // line " << __LINE__ << "\n";
 					}
 				} else {
 					if( IsPointerType( field.Type )) {
+
 						sub( tmpl, R"""(
 	if( $1->$2 ) { // line $3
-		lprint( indent, "$2:", *( $1->$2 ));
+		lprint( indent, "$2: ", *( $1->$2 ));
 	} else {
-		lprint( indent, "$2:", "null" );
+		lprint( indent, "$2: ", "null" );
 	}
 						)""", 1, var_name, field.Name, __LINE__ );
-//						tmpl << "	if( " <<  var_name << "->" << field.Name << ") { // line " << __LINE__ << "\n";
-//						tmpl << "		lprint( indent, \"" << field.Name << ": \", *(" << var_name << "->" << field.Name << ")); // line " << __LINE__ << "\n";
-//						tmpl << "	} else {\n";
-//						tmpl << "		lprint( indent, \"" << field.Name << ":\", \"null\" ); // line " << __LINE__ << "\n";
-//						tmpl << "	}\n";
 
 					} else {
 						sub( tmpl, R"""(
-	lprint( indent, "$2:", $1->$2 ); // line $3
+	lprint( indent, "$2: ", $1->$2 ); // line $3
 						)""", 1, var_name, field.Name, __LINE__ );
-//						tmpl << "	lprint( indent, \"" 
-//						<< field.Name << ": \", " << var_name << "->" << field.Name << "); // line " << __LINE__ << "\n";
 					}	
 				}
 			} else {
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
 				if( subType ) {
 					sub( tmpl, R"""(
-	lprint( indent, "$1:", "" ); // line $2
+	lprint( indent, "$1: ", "" ); // line $2
 					)""", 1, field.Name, __LINE__ );
-					//tmpl << "	lprint( indent, \"" << field.Name << ":\",\"\" ); // line " << __LINE__ << "\n";
 
 					if( IsArrayType( field.Type )) { 
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 
 							string subfield_name = var_name + "->" + field.Name + "[" + to_string(i) + "]";
+
 							sub( tmpl, R"""(
-	lprint( indent, "  - $1_$2:", "" ); // line $3
+	lprint( indent, "  - $1_$2: ", "" ); // line $3
 							)""", 1, field.Name, i, __LINE__ );
-							//tmpl << "	lprint( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",\"\" ); // line " << __LINE__ << "\n";
 	
 							if( IsPointerType( field.Type )) {
-						sub( tmpl, R"""(
+
+								sub( tmpl, R"""(
 	if( $3 ) { // line $5
 		Class<$4>::print_class_yaml( $3 , indent + "    ", lprint );
 	} else {
-		lprint( indent + "    ", "$1_$2:", "null" );
+		lprint( indent + "    ", "$1_$2: ", "null" );
 	}
-						)""", 1, field.Name, to_string(i), subfield_name, GetBaseType(field.Type), __LINE__ );
-
-//								tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
-//						
-//								tmpl << "		Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-//								<< " " << subfield_name << ", indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
-//
-//								tmpl << "	} else {\n";
-//								tmpl << "		lprint( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", \"null\" ); // line " << __LINE__ << "\n";
-//								tmpl << "	}\n";
+								)""", 1, field.Name, to_string(i), subfield_name, GetBaseType(field.Type), __LINE__ );
 
 							} else {
-						sub( tmpl, R"""(
+
+								sub( tmpl, R"""(
 	Class<$1>::print_class_yaml( &($2), indent + "    ", lprint ); // line $3
-						)""", 1, GetBaseType(field.Type), subfield_name, __LINE__ );
-//								tmpl << "	Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-//								<< " &(" << subfield_name << "), indent + \"        \", lprint ); // line " << __LINE__ << "\n" ;
+								)""", 1, GetBaseType(field.Type), subfield_name, __LINE__ );
 							}
 						}
 					} else {
 						string subfield_name = var_name + "->" + field.Name;
 
 						if( IsPointerType( field.Type )) {
+
 							sub( tmpl, R"""(
 	if( $1 ) { // line $2
 		Class<$3>::print_class_yaml( $1 , indent + "    ", lprint );
 	} else {
-		lprint( indent + "    ", "$4:", "null" );
+		lprint( indent + "    ", "$4: ", "null" );
 	}
-						)""", 1, subfield_name, __LINE__, GetBaseType(field.Type), field.Name );
+							)""", 1, subfield_name, __LINE__, GetBaseType(field.Type), field.Name );
 
-//							tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
-//							tmpl << "		Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-//							<< " " << subfield_name << ", indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
-//
-//							tmpl << "	} else {\n";
-//							tmpl << "		lprint( indent + \"    \", \"" + field.Name << ":\", \"null\" ); // line " << __LINE__ << "\n";
-//							tmpl << "	}\n";
 						} else {
 							sub( tmpl, R"""(
 	Class<$1>::print_class_yaml( &($2), indent + "    ", lprint ); // line $3
-						)""", 1, GetBaseType(field.Type), subfield_name, __LINE__ );
-//						tmpl << "	Class<" << GetBaseType(field.Type) << ">::print_class_yaml(" 
-//							<< " &(" << subfield_name << "), indent + \"    \", lprint ); // line " << __LINE__ << "\n" ;
+							)""", 1, GetBaseType(field.Type), subfield_name, __LINE__ );
 						}
 					}
 				}
@@ -404,140 +381,180 @@ namespace
 	{
 		stringstream tmpl;
 		int field_count = 0;
-		sub( tmpl, R"""(char val_str[1024]; // line $1 )""", 1, __LINE__ );
-		//tmpl << "	char val_str[1024]; // line " << __LINE__ << "\n"; // lread any val_str values into here
 
-		bool found_base_class = false;
+		sub( tmpl, R"""(
+	char val_str[1024]; // line $1 
+		)""", 1, __LINE__ );
+
+		//bool found_base_class = false;
 		for (const auto& base_class_name : c.BaseClasses) {
 			const Class * baseType = dynamic_cast<const Class*>(findType( base_class_name, types ));
 			if( baseType ) {
 
-				found_base_class = true;
+				//found_base_class = true;
+
 				sub( tmpl, R"""(
 	lread( indent, "base class $1:", val_str); // line $2
 	Class<$1>::read_class_yaml( static_cast<$1 *>(c), indent + "    ", lread ); 
 				)""", 1, base_class_name, __LINE__ );	
-
-				//tmpl << "	lread( indent, \"" << "base class " << base_class_name << ":\", val_str); // line " << __LINE__ << "\n";
-				//tmpl << "	Class<" << base_class_name << ">::read_class_yaml( static_cast< " << base_class_name << " * >(c), indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 			}
 		}
-		if( found_base_class ) {
-			tmpl << " // line " << __LINE__ << "\n";
-		}
-
 		for (const auto& field : c.Fields) {
 	
 			string base = GetBaseType(field.Type);
 
 			sub( tmpl, R"""(
 	// got field : $1 $2
-	memset( val_str, 0 , sizeof( val_str )); // line $3
-			)""", 1, field.Type, field.Name, __LINE__ );	
 
-			//tmpl << "\n" << indent << "// got field : " << field.Type << " " << field.Name << "\n";
-			//tmpl << "	memset(val_str, 0, sizeof(val_str)); // line " << __LINE__ << "\n";
+	memset( val_str, 0 , sizeof( val_str )); // line $3 
+			)""", 1, field.Type, field.Name, __LINE__ );
+
 
 			if( IsFundamentalType( base ))  
 			{
 				sub( tmpl, R"""(
-	lread( indent, "$1:", val_str ); // line $2 
+	lread( indent, "$1:", val_str ); // line $2
 				)""", 1, field.Name, __LINE__ );
-				//tmpl << "	lread( indent, \"" << field.Name << ":\", val_str ); // line " << __LINE__ << " // line " << __LINE__ << "\n";
-//
+
 				if( IsArrayType( field.Type ))  
 				{
 					if( strcmp( base.c_str(), "char" )) { // not a char array
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
-							sub( tmpl, R"""(	lread( indent + "  - ", "", val_str ) ; // line $1 )""", 1, __LINE__ );
-							//tmpl << "		lread( indent + \"  - \", \"\", val_str ); // line " << __LINE__ << "\n"; 
+
+							sub( tmpl, R"""(
+	lread( indent + "  - ", "", val_str ) ; // line $1 
+							)""", 1, __LINE__ );
+
 							if( IsPointerType( field.Type )) {
-								sub( tmpl, R"""(	if( $1->$2[$3] ) // line $4 )""", 1, var_name, field.Name, i, __LINE__ );
-								//tmpl << "	if( " <<  var_name << "->" << field.Name  << "[" << i << "]) { // line " << __LINE__ << "\n";
+
+								sub( tmpl, R"""(
+	if( $1->$2[$3] ) // line $4 
+								)""", 1, var_name, field.Name, i, __LINE__ );
+
 								if( IsIntType( base )) {
-									sub( tmpl, R"""(		*( $1->$2[$3] )  = ($4) atol(val_str); // line $5 )""", 1, var_name, field.Name, i, base, __LINE__ );
-									//tmpl << "		*(" << var_name << "->" << field.Name << "[" << i << "]) = (" << base << ") atol(val_str); // line " << __LINE__ << "\n";
+
+									sub( tmpl, R"""(
+		*( $1->$2[$3] )  = ($4) atol(val_str); // line $5 
+									)""", 1, var_name, field.Name, i, base, __LINE__ );
+
 								} else if( IsFloatType( base )) {
-									sub( tmpl, R"""(		*( $1->$2[$3] )  = ($4) atof(val_str); // line $5 )""", 1, var_name, field.Name, i, base, __LINE__ );
-									//tmpl << "		*(" << var_name << "->" << field.Name << "[" << i << "]) = (" << base << ") atof(val_str); // line " << __LINE__ << "\n";
+
+									sub( tmpl, R"""(
+		*( $1->$2[$3] )  = ($4) atof(val_str); // line $5 
+									)""", 1, var_name, field.Name, i, base, __LINE__ );
 								}
-								tmpl << "	else \n";
-								sub( tmpl, R"""(		printf("skipping [%s] due to null dest pointer: $1->$2[$3]", val_str); // line $5 )""", 1, var_name, field.Name, i , __LINE__ );
-								//tmpl << "		printf(\"%s:%d skipping [%s] due to null dest pointer: " 
-								//<< var_name << "->" << field.Name << "[" << i << "]\", __FILE__, __LINE__, val_str ); // line " << __LINE__ << "\n";
-								//tmpl << "	} // line " << __LINE__ << "\n";
+									sub( tmpl, R"""(
+	else // line $1
+									)""", 1, __LINE__ );
+
+								sub( tmpl, R"""(
+		printf("skipping [%s] due to null dest pointer: $1->$2[$3]", val_str); // line $5 
+								)""", 1, var_name, field.Name, i , __LINE__ );
+
 							} else {
 								if( IsIntType( base )) {
-									sub( tmpl, R"""(		$1->$2[$3] = ($4) atol( val_str ); // line $5 )""", 1, var_name, field.Name, i, base,  __LINE__ );
-									//tmpl << "		" << var_name << "->" << field.Name << "[" << i << "] = (" << base << ") atol(val_str); // line " << __LINE__ << "\n";
+
+									sub( tmpl, R"""(
+	$1->$2[$3] = ($4) atol( val_str ); // line $5 
+									)""", 1, var_name, field.Name, i, base,  __LINE__ );
+
 								} else if( IsFloatType( base )) {
-									sub( tmpl, R"""(	$1->$2[$3] = ($4) atof( val_str ); // line $5 )""", 1, var_name, field.Name, i, base,  __LINE__ );
-									//tmpl << "		" << var_name << "->" << field.Name << "[" << i << "] = (" << base << ") atof(val_str); // line " << __LINE__ << "\n";
+
+									sub( tmpl, R"""(	
+	$1->$2[$3] = ($4) atof( val_str ); // line $5 
+									)""", 1, var_name, field.Name, i, base,  __LINE__ );
 								}
 							}	
 						}
 					} else {
-					////tmpl << "	lread( indent, \"" << field.Name << ":\", val_str ); // line " << __LINE__ << "\n";
-						sub( tmpl, R"""(	strcpy( (char *)( $1->$2 ), val_str ); // line $3 )""", 1, var_name, field.Name, __LINE__ );	
-						//tmpl << "	strcpy( (char *)(" << var_name << "->" << field.Name << "), val_str ); // line " << __LINE__ << "\n";
+						sub( tmpl, R"""(
+	strcpy( (char *)( $1->$2 ), val_str ); // line $3 
+						)""", 1, var_name, field.Name, __LINE__ );	
 					}
-				}
-				 else 
-				{
+				} else { 
 					if( IsPointerType( field.Type ))
 					{
-						sub( tmpl, R"""(	if( $1->$2 ) // line $3 )""", 1, var_name, field.Name, __LINE__ );
+						sub( tmpl, R"""(
+	if( $1->$2 ) { // line $3
+						)""", 1, var_name, field.Name, __LINE__ );
+
 						if( IsIntType( base )) {
-							sub( tmpl, R"""(		*( $1->$2 ) = ($3) atol( val_str ); // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
+
+							sub( tmpl, R"""(
+		*( $1->$2 ) = ($3) atol( val_str ); // line $4
+							 )""", 1, var_name, field.Name, base,  __LINE__ );
+
 						} else if( IsFloatType( base )) {
-							sub( tmpl, R"""(		*( $1->$2 ) = ($3) atof( val_str ); // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
+
+							sub( tmpl, R"""(
+		*( $1->$2 ) = ($3) atof( val_str ); // line $4
+							 )""", 1, var_name, field.Name, base,  __LINE__ );
+
 						} else if( base == string( "char" )) {
-							sub( tmpl, R"""(		*( $1->$2 ) = ($3) *val_str ; // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
+
+							sub( tmpl, R"""(
+		*( $1->$2 ) = ($3) *val_str ; // line $4
+							 )""", 1, var_name, field.Name, base,  __LINE__ );
+
 						} else {
-							sub( tmpl, R"""(		printf("unsupported type [%s]\n", $1); // line $2 )""", 1, base, __LINE__ );
+							sub( tmpl, R"""(
+		printf("unsupported ptr type [%s]\n", $1); // line $2
+							)""", 1, base, __LINE__ );
 						}
-						tmpl << "	else \n";
-						sub( tmpl, R"""(		printf("skipping [%s] due to null dest pointer: $1->$2", val_str); // line $3 )""", 1, var_name, field.Name, __LINE__ );
-						
-					}
-					 else if( base == string( "char" )) {
-						sub( tmpl, R"""(	$1->$2 = ($3) *val_str ; // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
-						//tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") *val_str; // line " << __LINE__ << "\n";
-					}
-					 else {
+
+						sub( tmpl, R"""(
+	} else {
+		printf("skipping [%s] due to null dest pointer: $1->$2", val_str); // line $3
+	}
+						)""", 1, var_name, field.Name, __LINE__ );
+
+					} else if( base == string( "char" )) {
+
+						sub( tmpl, R"""(
+	$1->$2 = ($3) *val_str ; // line $4 
+						)""", 1, var_name, field.Name, base,  __LINE__ );
+
+					} else {
 						if( IsIntType( base )) {
-							sub( tmpl, R"""(	$1->$2 = ($3) atol( val_str ); // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
+
+							sub( tmpl, R"""(
+	$1->$2 = ($3) atol( val_str ); // line $4
+							)""", 1, var_name, field.Name, base,  __LINE__ );
+
+					 	} else if( IsFloatType( base )) {
+
+							sub( tmpl, R"""(
+	$1->$2 = ($3) atof( val_str ); // line $4
+							)""", 1, var_name, field.Name, base,  __LINE__ );
+
+						} else {
+							sub( tmpl, R"""(
+	printf("unsupported type [%s]\n", $1); // line $2
+							)""", 1, base, __LINE__ );
 						}
-						 else if( IsFloatType( base )) {
-							sub( tmpl, R"""(	$1->$2 = ($3) atof( val_str ); // line $4 )""", 1, var_name, field.Name, base,  __LINE__ );
-						}
-//	//					if( IsIntType( base )) {
-//	//						////tmpl << "	lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
-//	//							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atol(val_str); // line " << __LINE__ << "\n";
-//	//						} else if( IsFloatType( base )) {
-//	//							//tmpl << "	lread( indent, \"" << field.Name << ": \", val_str ); // line " << __LINE__ << "\n";
-//	//							tmpl << "	" << var_name << "->" << field.Name << " = (" << base << ") atof(val_str); // line " << __LINE__ << "\n";
-//	//						}
-						}	
-					}
+					}	
+				}
 			}
 			else 
 			{
 
 				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
 				if( subType ) {
-					tmpl << "\n";
-					sub( tmpl, R"""(	lread( indent, "$1:", val_str ); // line $2 )""", 1, field.Name, __LINE__ );	
-					//tmpl << "	lread( indent, \"" << field.Name << ":\", val_str); // line " << __LINE__ << "\n";
+
+					sub( tmpl, R"""(	
+	lread( indent, "$1:", val_str ); // line $2 
+					)""", 1, field.Name, __LINE__ );	
 
 					if( IsArrayType( field.Type )) { 
 						int arraySize = GetArraySize( field.Type );
 						for( int i = 0 ; i < arraySize ; ++i ) {
 
 							string subfield_name = var_name + "->" + field.Name + "[" + to_string(i) + "]";
-							sub( tmpl, R"""(	lread( indent, "  - $1_$2:", val_str); // line $3 )""", 1, field.Name, to_string(i), __LINE__ ); 
-						//	tmpl << "	lread( indent, \"  - " << field.Name << "_" << to_string(i) << ":\",val_str); // line " << __LINE__ << "\n";
+
+							sub( tmpl, R"""(
+	lread( indent, "  - $1_$2:", val_str); // line $3 
+							)""", 1, field.Name, to_string(i), __LINE__ ); 
 	
 							if( IsPointerType( field.Type )) {
 								
@@ -548,25 +565,19 @@ namespace
 		lread( indent + "    ", "$3_$4:", val_str );
 	}
 								)""", 1, subfield_name, GetBaseType(field.Type), field.Name, to_string(i), __LINE__ );
- 
-//								tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
-//								tmpl << "		Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-//								<< " " << subfield_name << ", indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
-//								tmpl << "	} else {\n";
-//								tmpl << "		lread( indent + \"    \", \"" << field.Name << "_" << to_string(i) << ":\", val_str); // line " << __LINE__ << "\n";
-//								tmpl << "	}\n";
 
 							} else {
-								sub( tmpl, R"""(	Class<$1>::read_class_yaml( &( $2 ), indent + "        ", lread ); // line $3
+
+								sub( tmpl, R"""(
+	Class<$1>::read_class_yaml( &( $2 ), indent + "        ", lread ); // line $3
 								)""", 1, GetBaseType(field.Type), subfield_name , __LINE__ );
-								//tmpl << "	Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-								//<< " &(" << subfield_name << "), indent + \"        \", lread ); // line " << __LINE__ << "\n" ;
 							}
 						}
 					} else {
 						string subfield_name = var_name + "->" + field.Name;
 
 						if( IsPointerType( field.Type )) {
+
 							sub( tmpl, R"""(
 	if( $1 ) { // line $4
 		Class<$2>::read_class_yaml( $1, indent + "    ", lread );
@@ -575,19 +586,11 @@ namespace
 	}
 							)""", 1, subfield_name, GetBaseType(field.Type), field.Name, __LINE__ );
 
-//							tmpl << "	if( " <<  subfield_name  << " ) { // line " << __LINE__ << "\n";
-//							tmpl << "		Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-//							<< " " << subfield_name << ", indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
-//							tmpl << "	} else {\n";
-//							tmpl << "		lread( indent + \"    \", \"" + field.Name << ":\", val_str); // line " << __LINE__ << "\n";
-//							tmpl << "	}\n";
 						} else {
+
 							sub( tmpl, R"""(
 	Class<$1>::read_class_yaml( $2, indent + "    ", lread ); // line $3
 							)""", 1, GetBaseType(field.Type), subfield_name, __LINE__ );
-
-							//tmpl << "	Class<" << GetBaseType(field.Type) << ">::read_class_yaml(" 
-							//<< " &(" << subfield_name << "), indent + \"    \", lread ); // line " << __LINE__ << "\n" ;
 						}
 					}
 				}

@@ -54,6 +54,7 @@ namespace
 
 		o << R"(#include <string>
 #include <cstring>
+#include <iostream>
 
 )";
 		// reflection must see private fields:
