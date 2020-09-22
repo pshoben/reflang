@@ -136,100 +136,6 @@ namespace
 		}
 		return NULL;
 	}
-	
-	string IterateFieldsAndValues(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types, string indent, string var_name, bool is_pointer)
-	{
-		stringstream tmpl;
-		int field_count = 0;
-		string redirect_parent = (is_pointer) ? "->" : ".";
-
-		for (const auto& base_class_name : c.BaseClasses) {
-			const Class * baseType = dynamic_cast<const Class*>(findType( base_class_name, types ));
-			if( baseType ) {
-				tmpl << "	t(\"" << indent
-				<< "base class " << base_class_name << ":\",\"\");\n";
-				tmpl << IterateFieldsAndValues( *baseType, types, 
-								indent + "  ", var_name,
-								false );
-			}
-		}
-
-		for (const auto& field : c.Fields) {
-		
-			string base = GetBaseType(field.Type);
-			string redirect_field = "";
-			//string subtype_redirect = ".";
-			if( IsPointerType( field.Type )) {
-				redirect_field = "*";
-				//subtype_redirect = "->";
-			}
-			if( IsFundamentalType( base ))  {
-				if( IsArrayType( field.Type ) 
-				&& strcmp( base.c_str(), "char" )) { // not a char array
-				
-					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
-					<< field.Name << ":\",\"\");\n";
-
-					int arraySize = GetArraySize( field.Type );
-					for( int i = 0 ; i < arraySize ; ++i ) {
-						tmpl << "	t(\"" << indent << "  - " // << field.Type << " " 
-						"\", " << redirect_field << var_name << redirect_parent << field.Name << "[" << i << "]);\n";
-					}
-				} else {
-					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
-					<< field.Name << ": \", " << redirect_field << var_name << redirect_parent << field.Name << ");\n";
-				}
-			} else {
-				const Class * subType = dynamic_cast<const Class*>(findType( base, types )) ;
-				if( subType ) {
-					tmpl << "	t(\"" << indent  // <<  field.Type << " " 
-					<< field.Name << ":\",\"\");\n";
-					if( IsArrayType( field.Type )) { 
-						int arraySize = GetArraySize( field.Type );
-						for( int i = 0 ; i < arraySize ; ++i ) {
-							string subfield_name = var_name + redirect_parent + field.Name + "[" + to_string(i) + "]";
-							if( IsPointerType( field.Type )) {
-								tmpl << " if( " <<  subfield_name  << ") {\n";
-							}
-							tmpl << IterateFieldsAndValues( *subType, types, indent + "  - ", subfield_name ,
-							IsPointerType( field.Type )) ;
-
-							if( IsPointerType( field.Type )) {
-								tmpl << " } else { t( " + subfield_name + ", \"null\");}\n";
-							}
-
-						}
-
-					} else {
-						string subfield_name = var_name + redirect_parent + field.Name;
-						if( IsPointerType( field.Type )) {
-							tmpl << " if( " <<  subfield_name  << ") {\n";
-						}
-						tmpl << IterateFieldsAndValues( *subType, types, 
-										indent + "  ", subfield_name,
-										IsPointerType( field.Type )) ;
-						if( IsPointerType( field.Type )) {
-							tmpl << " } else { t( " + subfield_name + ", \"null\");}\n";
-						}
-
-					}
-				}
-			}
-			// yaml syntax requires list entries that are structs to be indented, and marked with "-" (but only on the first fielD) 
-			if( field_count == 0 ) {
-				size_t index = 0;
-				while( true ) {
-					index = indent.find( "-",index );
-					if( index == string::npos ) 
-						break;
-					indent.replace( index,1," " );
-					++index;
-				}	
-			}
-			field_count++;
-		}
-		return tmpl.str();
-	}
 
 	string print_class_yaml(const Class& c, const std::vector<std::unique_ptr<TypeBase>>& types,  string indent, string var_name )
 	{
@@ -922,12 +828,6 @@ public:
 	static void IterateFields(%name%& c, T t);
 
 	template <typename T>
-	static void IterateFieldsAndValues(const %name%& c, T t);
-
-	template <typename T>
-	static void IterateFieldsAndValues(%name%& c, T t);
-
-	template <typename T>
 	static void print_class_yaml(const %name% * c, std::string indent, T lprint);
 
 	template <typename T>
@@ -947,16 +847,6 @@ template <typename T>
 void Class<%name%>::IterateFields(%name%& c, T t)
 {
 %iterate_fields%}
-
-template <typename T>
-void Class<%name%>::IterateFieldsAndValues(const %name%& c, T t)
-{
-%iterate_fields_and_values%}
-
-template <typename T>
-void Class<%name%>::IterateFieldsAndValues(%name%& c, T t)
-{
-%iterate_fields_and_values%}
 
 template <typename T>
 void Class<%name%>::print_class_yaml(const %name% * c, std::string indent, T lprint)
@@ -985,7 +875,6 @@ void Class<%name%>::IterateStaticFields(T t)
 			{
 				{"%name%", c.GetFullName()},
 				{"%iterate_fields%", IterateFields(c)},
-				{"%iterate_fields_and_values%", IterateFieldsAndValues(c, types, "    ", "c", false)},
 				{"%print_class_yaml%", print_class_yaml(c, types, "", "c")},
 				{"%read_class_yaml%", read_class_yaml(const_cast<Class&>(c), types, "", "c")},
 				{"%iterate_static_fields%", IterateStaticFields(c)},
